@@ -1,0 +1,44 @@
+@startuml
+scale 2
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam componentStyle rectangle
+title Arquitectura hexagonal - Puertos y adaptadores
+
+actor "Cliente HTTP\n(Postman / curl)" as Cliente
+
+rectangle "Adaptador primario (driving)" #E3F2FD {
+  component [GymClassController\n+ ApiExceptionHandler\n+ ApiRequests] as Web
+}
+
+rectangle "NÚCLEO (hexágono)" #FFFDE7 {
+  interface "GymClassInputPort\n<<puerto entrada>>" as PIn
+  component [GymClassApplicationService] as App
+  component [Dominio\nMember, ClassSession, Booking\nBookingPolicy, Value Objects] as Dom
+  interface "MemberRepositoryPort\n<<puerto salida>>" as POutM
+  interface "ClassSessionRepositoryPort\n<<puerto salida>>" as POutS
+}
+
+rectangle "Adaptadores secundarios (driven)" #FCE4EC {
+  component [MemberRepositoryAdapter] as AM
+  component [ClassSessionRepositoryAdapter] as AS
+  component [Spring Data JPA\n+ entidades *JpaEntity] as JPA
+}
+
+database "H2\njdbc:h2:mem:gymclassdb" as H2
+
+component [HexagonalConfiguration\n(composition root)] as Cfg
+
+Cliente --> Web : HTTP/JSON
+Web --> PIn : usa
+PIn <.. App : implementa
+App --> Dom : invoca reglas
+App --> POutM : usa
+App --> POutS : usa
+POutM <-- AM : implementa
+POutS <-- AS : implementa
+AM --> JPA
+AS --> JPA
+JPA --> H2
+Cfg ..> App : crea y conecta
+@enduml

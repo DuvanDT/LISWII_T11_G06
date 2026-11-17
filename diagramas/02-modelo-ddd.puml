@@ -1,0 +1,106 @@
+@startuml
+scale 2
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam classAttributeIconSize 0
+title Modelo de dominio DDD - Bounded Context: Gym Class Management
+
+package "Agregado Member" #E8F5E9 {
+  class Member <<Aggregate Root>> {
+    - id: MemberId
+    - fullName: String
+    - email: EmailAddress
+    - plan: MembershipPlan
+    - status: MembershipStatus
+    + rename(newName)
+    + suspendMembership()
+    + activateMembership()
+    + changePlan(newPlan)
+    + canAttend(type): boolean
+  }
+}
+
+package "Agregado ClassSession" #E3F2FD {
+  class ClassSession <<Aggregate Root>> {
+    - id: SessionId
+    - title: String
+    - type: ClassType
+    - schedule: ClassSchedule
+    - capacity: int
+    + book(memberId, now): Booking
+    + cancelBooking(memberId, now)
+    + confirmedBookingsCount(): int
+    + availableSpots(): int
+  }
+  class Booking <<Entity>> {
+    - id: BookingId
+    - memberId: MemberId
+    - bookedAt: LocalDateTime
+    - status: Status
+    + cancel()
+    + isConfirmed(): boolean
+  }
+  enum "Booking.Status" as BS {
+    CONFIRMED
+    CANCELLED
+  }
+}
+
+class BookingPolicy <<Domain Service>> {
+  + ensureEligible(member, session, now)
+}
+
+class MemberId <<Value Object>>
+class SessionId <<Value Object>>
+class BookingId <<Value Object>>
+class EmailAddress <<Value Object>>
+class ClassSchedule <<Value Object>> {
+  startsAt
+  endsAt
+  + hasStartedAt(now): boolean
+}
+enum MembershipPlan <<Value Object>> {
+  BASIC
+  STANDARD
+  PREMIUM
+  + allows(type): boolean
+}
+enum MembershipStatus <<Value Object>> {
+  ACTIVE
+  SUSPENDED
+}
+enum ClassType <<Value Object>> {
+  YOGA
+  PILATES
+  SPINNING
+}
+
+ClassSession "1" *-- "0..*" Booking : controla >
+Booking --> BS
+Booking ..> MemberId : referencia por id
+Member --> MemberId
+Member --> EmailAddress
+Member --> MembershipPlan
+Member --> MembershipStatus
+ClassSession --> SessionId
+ClassSession --> ClassType
+ClassSession --> ClassSchedule
+Booking --> BookingId
+BookingPolicy ..> Member
+BookingPolicy ..> ClassSession
+
+note bottom of ClassSession
+  Invariantes:
+  - capacidad > 0
+  - no superar la capacidad
+  - una reserva confirmada por socio
+  - no reservar/cancelar si la clase empezó
+end note
+note bottom of Member
+  Invariantes:
+  - nombre obligatorio
+  - inicia ACTIVE
+  - solo asiste si está ACTIVE
+    y su plan permite el tipo
+end note
+@enduml

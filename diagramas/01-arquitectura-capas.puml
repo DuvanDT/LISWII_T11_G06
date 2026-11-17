@@ -1,0 +1,28 @@
+@startuml
+scale 2
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam rectangleFontSize 13
+title Arquitectura del demo GymClass: capas y clases
+
+rectangle "Cliente (Postman / curl)" as CLI #FFFFFF
+
+rectangle "**Adaptador de entrada (driving)** — adapter.in.web\n\nGymClassController  ·  ApiExceptionHandler  ·  ApiRequests (DTO HTTP con validaciones)" as WEB #E3F2FD
+
+rectangle "**Aplicación** — application\n\nPuerto de entrada: GymClassInputPort\nServicio de aplicación: GymClassApplicationService\nPuertos de salida: MemberRepositoryPort  ·  ClassSessionRepositoryPort\nDTO: Requests  ·  Responses" as APP #FFF9C4
+
+rectangle "**Dominio** — domain\n\nmodel: Member  ·  ClassSession  ·  Booking\nvalueobject: MemberId · SessionId · BookingId · EmailAddress · ClassSchedule\n                     MembershipPlan · MembershipStatus · ClassType\nservice: BookingPolicy" as DOM #C8E6C9
+
+rectangle "**Adaptador de salida (driven)** — adapter.out.persistence\n\nMemberRepositoryAdapter  ·  ClassSessionRepositoryAdapter\nMemberJpaEntity  ·  ClassSessionJpaEntity  ·  BookingJpaEntity\nSpringDataMemberRepository  ·  SpringDataClassSessionRepository" as OUT #FCE4EC
+
+database "H2 en memoria\njdbc:h2:mem:gymclassdb" as H2
+
+rectangle "**Configuración** — config\n\nGymClassApplication (main)\nHexagonalConfiguration (composition root)\napplication.yml" as CFG #EEEEEE
+
+CLI --> WEB : HTTP / JSON
+WEB --> APP : invoca GymClassInputPort
+APP --> DOM : usa entidades y reglas
+OUT ..> APP : implementa puertos de salida
+OUT --> H2 : JPA / Hibernate
+CFG ..> APP : crea y conecta beans
+@enduml

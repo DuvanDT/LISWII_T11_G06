@@ -1,0 +1,51 @@
+@startuml
+scale 2
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam classAttributeIconSize 0
+hide empty members
+title Manejo de persistencia: modelo de dominio vs modelo JPA
+left to right direction
+
+package "Dominio (sin JPA)" #C8E6C9 {
+  class Member
+  class ClassSession
+  class Booking
+}
+package "Puertos de salida" #FFF9C4 {
+  interface MemberRepositoryPort
+  interface ClassSessionRepositoryPort
+}
+package "Adaptador de persistencia" #FCE4EC {
+  class MemberRepositoryAdapter
+  class ClassSessionRepositoryAdapter
+  class MemberJpaEntity <<@Entity members>> {
+    fromDomain(Member)
+    toDomain(): Member
+  }
+  class ClassSessionJpaEntity <<@Entity class_sessions>> {
+    fromDomain(ClassSession)
+    toDomain(): ClassSession
+  }
+  class BookingJpaEntity <<@Entity bookings>> {
+    fromDomain(Booking)
+    toDomain(): Booking
+  }
+  interface SpringDataMemberRepository <<JpaRepository>>
+  interface SpringDataClassSessionRepository <<JpaRepository>>
+}
+class "H2 (memoria)" as H2 <<database>>
+
+MemberRepositoryAdapter ..|> MemberRepositoryPort
+ClassSessionRepositoryAdapter ..|> ClassSessionRepositoryPort
+MemberRepositoryAdapter --> SpringDataMemberRepository
+ClassSessionRepositoryAdapter --> SpringDataClassSessionRepository
+SpringDataMemberRepository --> MemberJpaEntity
+SpringDataClassSessionRepository --> ClassSessionJpaEntity
+ClassSessionJpaEntity "1" *-- "0..*" BookingJpaEntity : @OneToMany cascade ALL\norphanRemoval, EAGER
+MemberJpaEntity ..> Member : mapea
+ClassSessionJpaEntity ..> ClassSession : mapea
+BookingJpaEntity ..> Booking : mapea
+SpringDataMemberRepository --> H2
+SpringDataClassSessionRepository --> H2
+@enduml

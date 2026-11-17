@@ -1,0 +1,55 @@
+@startuml
+scale 2
+skinparam shadowing false
+skinparam defaultFontName Arial
+autonumber
+title Caso de uso: Reservar una clase\nPOST /api/sessions/{sessionId}/bookings/{memberId}
+
+actor Socio as U
+participant "GymClassController\n<<adaptador entrada>>" as C
+participant "GymClassInputPort\n<<puerto entrada>>" as P
+participant "GymClassApplicationService" as S
+participant "MemberRepositoryPort\n(MemberRepositoryAdapter)" as MR
+participant "ClassSessionRepositoryPort\n(ClassSessionRepositoryAdapter)" as SR
+participant "BookingPolicy\n<<servicio dominio>>" as BP
+participant "ClassSession\n<<raíz agregado>>" as CS
+database H2
+
+U -> C : POST /api/sessions/{sId}/bookings/{mId}
+activate C
+note right of C : @Transactional inicia la transacción
+C -> P : bookClass(sId, mId)
+P -> S : bookClass(sId, mId)
+activate S
+S -> MR : findById(MemberId.of(mId))
+MR -> H2 : SELECT members
+H2 --> MR : MemberJpaEntity
+MR --> S : Optional<Member> (toDomain)
+S -> SR : findById(SessionId.of(sId))
+SR -> H2 : SELECT class_sessions + bookings
+H2 --> SR : ClassSessionJpaEntity
+SR --> S : Optional<ClassSession> (toDomain)
+alt socio o clase no existe
+  S --> C : NoSuchElementException
+  C --> U : 404 Not Found
+end
+S -> BP : ensureEligible(member, session, now)
+alt membresía inactiva / plan no permite / clase iniciada / llena / duplicada
+  BP --> S : IllegalStateException
+  S --> C : excepción
+  C --> U : 400 Bad Request (ApiExceptionHandler)
+end
+S -> CS : book(memberId, now)
+activate CS
+CS -> CS : valida invariantes y crea Booking(CONFIRMED)
+CS --> S : Booking
+deactivate CS
+S -> SR : save(session)
+SR -> H2 : MERGE class_sessions / INSERT bookings
+SR --> S : ClassSession
+S --> P : BookingResponse
+deactivate S
+P --> C : BookingResponse
+C --> U : 201 Created (JSON)
+deactivate C
+@enduml
